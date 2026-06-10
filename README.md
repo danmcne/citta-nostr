@@ -1,4 +1,4 @@
-# City Layer — v0.1 (Phase 1: Core Event Map)
+# Citta Nostr — v0.1 (Phase 1: Core Event Map)
 
 A city-configurable client platform for **cultural events with first-class
 accessibility data**, built on Nostr. Bari is the reference city; any city is
