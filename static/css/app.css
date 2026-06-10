@@ -209,6 +209,7 @@ button { font: inherit; cursor: pointer; }
   color: var(--green);
 }
 .badge.cat { background: var(--sea-tint); color: var(--sea-deep); font-weight: 500; }
+.badge.ecash { background: #F7EBD4; color: var(--amber); }
 
 .empty { text-align: center; color: var(--ink-soft); padding: 24px 8px; }
 .empty p { margin: 4px 0; }
@@ -229,6 +230,10 @@ button { font: inherit; cursor: pointer; }
   cursor: pointer;
 }
 .marker.a11y { background: var(--green); }
+.marker.merchant {
+  background: var(--amber);
+  border-radius: 4px;          /* squares = commerce, circles = events */
+}
 .marker.dim { opacity: .25; pointer-events: none; }
 
 .maplibregl-popup-content {
@@ -240,6 +245,14 @@ button { font: inherit; cursor: pointer; }
 .popup-title { font-weight: 700; margin-bottom: 2px; }
 .popup-meta { font-size: 13px; color: var(--ink-soft); margin-bottom: 6px; }
 .popup-desc { font-size: 13px; margin-bottom: 6px; }
+.popup-publisher {
+  font-size: 12px;
+  color: var(--ink-soft);
+  border-top: 1px solid var(--line);
+  margin-top: 8px;
+  padding-top: 6px;
+  word-break: break-all;
+}
 
 /* ------------------------------------------------- temporal scrubber */
 
@@ -278,6 +291,122 @@ button { font: inherit; cursor: pointer; }
   accent-color: var(--sea);
   margin: 0;
 }
+
+/* ------------------------------------------------- wallet & modal */
+
+.wallet-open {
+  background: transparent;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, .4);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-weight: 600;
+}
+.wallet-open:hover { background: rgba(255, 255, 255, .12); }
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(21, 35, 46, .45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 16px;
+}
+.modal[hidden] { display: none; }   /* author display:flex would otherwise
+                                       override the UA hidden rule */
+
+.modal-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  width: min(440px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 18px 20px;
+}
+
+.modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.modal-head h2 { margin: 0; font-size: 18px; }
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  color: var(--ink-soft);
+  padding: 2px 6px;
+}
+
+.wallet-balance-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+}
+.wallet-balance { font-size: 22px; font-weight: 800; color: var(--sea-deep); }
+.wallet-balance-note { font-size: 12px; color: var(--ink-soft); }
+
+.mint-list { list-style: none; margin: 0 0 14px; padding: 0; }
+.mint-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  padding: 5px 0;
+  word-break: break-all;
+}
+.mint-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.mint-item.ok .mint-dot { background: var(--green); }
+.mint-item.err .mint-dot { background: #C24141; }
+.mint-item.err { color: var(--ink-soft); }
+
+#wallet-token-input {
+  width: 100%;
+  font: inherit;
+  font-size: 13px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.wallet-actions { margin-top: 8px; }
+
+button.primary {
+  background: var(--sea);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 700;
+}
+button.primary:hover { background: var(--sea-deep); }
+
+.wallet-msg { font-size: 13px; margin-top: 8px; min-height: 18px; }
+.wallet-msg.ok { color: var(--green); }
+.wallet-msg.err { color: #C24141; }
+
+.wallet-soon {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  border-top: 1px solid var(--line);
+  margin-top: 14px;
+  padding-top: 10px;
+}
+
+.merchant-check { border: none; padding-left: 0; }
 
 /* ---------------------------------------------------------------- mobile */
 
