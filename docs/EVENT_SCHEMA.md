@@ -58,7 +58,50 @@ also travel over public relays (global redundancy). The `["t", "bari"]` tag lets
 clients subscribe meaningfully on *any* relay; the city relay list in the city
 profile is the trust/priority layer on top.
 
-## Merchants (Phase 2 preview)
+## Organization & merchant profiles (kind 0)
 
-Merchants will be kind `30402`-style addressable nodes with `["t", "bari"]`,
-a `g` geohash, and `["ecash", "<mint-url>"]` tags. Not implemented in v0.1.
+Every publisher (organization or merchant) SHOULD publish a standard kind-0
+profile. The client resolves author pubkeys to display names through these
+("pubblicato da Fondazione Teatro Petruzzelli ✓"). città nostr adds an
+optional extension object inside the kind-0 JSON content:
+
+```json
+{
+  "name": "Teatri di Bari — Kismet",
+  "about": "...",
+  "cittanostr": {
+    "city": "bari",
+    "role": "organization",        // or "merchant"
+    "venue": "Teatro Kismet OperA",
+    "address": "Strada San Giorgio Martire 22/F, Bari",
+    "g": "sr1mu..."                // home-venue geohash
+  }
+}
+```
+
+Events still carry their own `g`/`location` (an org can host an event
+anywhere); the profile geohash is the organization's *home* venue. Keeping
+venue coordinates in profiles means a wrong location is fixed in one place
+by the org itself — not by every client.
+
+## Merchants (kind 33888, provisional)
+
+Parameterized-replaceable "merchant node", same replaceability rules as
+events. The kind number is a città nostr convention until a suitable NIP
+standardizes merchant directories.
+
+```
+["d",        "<stable-id>"]            required
+["title",    "Caffè del Borgo"]        required — display name
+["location", "Piazza Mercantile, Bari"]
+["g",        "sr1n0..."]               geohash
+["t",        "bari"]                   required — community tag
+["t",        "caffè"]                  zero or more category tags
+["ecash",    "https://mint.example"]   one per accepted mint;
+                                       presence = "accepts ecash"
+```
+
+`content` = short description. The client renders merchants as amber squares
+(events are circles) and shows the mint URLs in the popup. The
+`trustedMerchants` allow-list in the city profile gates display exactly like
+`trustedPublishers` gates events.
