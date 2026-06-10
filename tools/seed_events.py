@@ -1,10 +1,19 @@
-"""Publish sample Bari cultural events to relays (for development/demo).
+"""Publish demo data for a city: org profiles, events, and ecash merchants.
 
-Generates a throwaway key (or reuses .seed_key), signs NIP-52 events with the
-Città Nostr accessibility convention, and publishes them to the city's relays.
+Reads config/cities/<city>.demo.json, generates one key per organization and
+merchant (persisted in data/demo_keys.json), then signs and publishes:
 
-    python -m tools.seed_events --city bari --dry-run   # print, don't publish
-    python -m tools.seed_events --city bari             # publish to relays
+  - kind 0      profiles (name/about + cittanostr metadata) for every entity
+  - kind 31923  NIP-52 events, signed by the owning organization's key
+  - kind 33888  città nostr merchant nodes (see docs/EVENT_SCHEMA.md)
+
+Usage:
+    python -m tools.seed_events --city bari --dry-run            # print only
+    python -m tools.seed_events --city bari --update-allowlist   # add pubkeys
+                                                                 # to the city
+                                                                 # profile, then
+                                                                 # publish
+    python -m tools.seed_events --city bari                      # just publish
 
 Requires: coincurve, websockets
 """
@@ -15,7 +24,6 @@ import asyncio
 import json
 import secrets
 import time
-import uuid
 from pathlib import Path
 
 import websockets
@@ -24,77 +32,105 @@ from coincurve import PrivateKey
 from server.nostr_util import event_id, geohash_encode
 
 ROOT = Path(__file__).resolve().parent.parent
-KEY_FILE = ROOT / "data" / ".seed_key"
+KEYS_FILE = ROOT / "data" / "demo_keys.json"
 
-DAY = 86400
+MERCHANT_KIND = 33888
 NOW = int(time.time())
 
-# title, description(it), venue, lat, lng, start offset, duration, cats, a11y
-SAMPLES = [
-    ("Concerto al Petruzzelli", "Stagione sinfonica al Teatro Petruzzelli.",
-     "Teatro Petruzzelli, Bari", 41.1226, 16.8723, 2 * DAY + 20 * 3600, 2 * 3600,
-     ["musica", "teatro"], ["wheelchair", "accessible-toilet", "hearing-loop"]),
-    ("Visita guidata a Bari Vecchia", "Passeggiata tra San Nicola e la Cattedrale.",
-     "Basilica di San Nicola, Bari", 41.1304, 16.8703, 1 * DAY + 10 * 3600, 2 * 3600,
-     ["cultura", "storia"], ["family-friendly"]),
-    ("Cinema all'aperto", "Rassegna estiva sul lungomare.",
-     "Lungomare Nazario Sauro, Bari", 41.1213, 16.8790, 3 * DAY + 21 * 3600, 2 * 3600,
-     ["cinema"], ["wheelchair", "step-free", "family-friendly"]),
-    ("Laboratorio LIS per bambini", "Laboratorio teatrale con interprete LIS.",
-     "Teatro Kismet, Bari", 41.0890, 16.8410, 5 * DAY + 17 * 3600, 90 * 60,
-     ["teatro", "bambini"], ["sign-language", "family-friendly", "quiet-space"]),
-    ("Mostra di arte contemporanea", "Esposizione con percorso tattile e audiodescrizione.",
-     "Teatro Margherita, Bari", 41.1273, 16.8716, 12 * 3600, 8 * 3600,
-     ["arte", "mostra"], ["wheelchair", "audio-description", "accessible-toilet"]),
-    ("Festa di quartiere al Libertà", "Musica dal vivo e cucina popolare.",
-     "Piazza Risorgimento, Bari", 41.1190, 16.8580, 6 * DAY + 18 * 3600, 5 * 3600,
-     ["festa", "musica"], []),
-]
+
+# ------------------------------------------------------------------ keys
+
+def load_keys() -> dict[str, str]:
+    if KEYS_FILE.exists():
+        return json.loads(KEYS_FILE.read_text())
+    return {}
 
 
-def load_or_create_key() -> PrivateKey:
-    KEY_FILE.parent.mkdir(parents=True, exist_ok=True)
-    if KEY_FILE.exists():
-        return PrivateKey(bytes.fromhex(KEY_FILE.read_text().strip()))
-    sk = PrivateKey(secrets.token_bytes(32))
-    KEY_FILE.write_text(sk.to_hex())
-    print(f"new seed key written to {KEY_FILE}")
-    return sk
+def key_for(keys: dict[str, str], entity_id: str) -> PrivateKey:
+    if entity_id not in keys:
+        keys[entity_id] = secrets.token_bytes(32).hex()
+        KEYS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        KEYS_FILE.write_text(json.dumps(keys, indent=2))
+    return PrivateKey(bytes.fromhex(keys[entity_id]))
 
 
 def xonly_pubkey(sk: PrivateKey) -> str:
     return sk.public_key.format(compressed=True)[1:33].hex()
 
 
+# ------------------------------------------------------------------ signing
+
 def sign_event(sk: PrivateKey, kind: int, tags: list, content: str,
                created_at: int | None = None) -> dict:
     pubkey = xonly_pubkey(sk)
     created_at = created_at or int(time.time())
     eid = event_id(pubkey, created_at, kind, tags, content)
-    sig = sk.sign_schnorr(bytes.fromhex(eid)).hex()
     return {"id": eid, "pubkey": pubkey, "created_at": created_at,
-            "kind": kind, "tags": tags, "content": content, "sig": sig}
+            "kind": kind, "tags": tags, "content": content,
+            "sig": sk.sign_schnorr(bytes.fromhex(eid)).hex()}
 
 
-def build_events(city: dict, sk: PrivateKey) -> list[dict]:
+# ------------------------------------------------------------------ builders
+
+def stable_d(city_id: str, entity_id: str, suffix: str = "") -> str:
+    """Deterministic d-tag so re-running the seeder REPLACES instead of
+    duplicating (parameterized-replaceable semantics)."""
+    return f"cittanostr-{city_id}-{entity_id}" + (f"-{suffix}" if suffix else "")
+
+
+def build_profile(sk: PrivateKey, city: dict, ent: dict, role: str) -> dict:
+    content = {
+        "name": ent["name"],
+        "about": ent.get("about", ""),
+        "cittanostr": {
+            "city": city["id"],
+            "role": role,
+            "venue": ent.get("venue"),
+            "address": ent.get("address"),
+            "g": geohash_encode(ent["lat"], ent["lng"], 9),
+        },
+    }
+    return sign_event(sk, 0, [], json.dumps(content, ensure_ascii=False))
+
+
+def build_org_events(sk: PrivateKey, city: dict, org: dict) -> list[dict]:
     out = []
-    for (title, desc, venue, lat, lng, offset, dur, cats, a11y) in SAMPLES:
-        start = NOW + offset
+    for i, ev in enumerate(org.get("events", [])):
+        lat = ev.get("lat", org["lat"])
+        lng = ev.get("lng", org["lng"])
+        start = NOW + int(ev["offsetH"] * 3600)
+        end = start + int(ev["durationH"] * 3600)
         tags = [
-            ["d", str(uuid.uuid4())],
-            ["title", title],
+            ["d", stable_d(city["id"], org["id"], str(i))],
+            ["title", ev["title"]],
             ["start", str(start)],
-            ["end", str(start + dur)],
-            ["location", venue],
+            ["end", str(end)],
+            ["location", f'{ev.get("venue", org["venue"])}, {city["name"]}'],
             ["g", geohash_encode(lat, lng, 9)],
             ["t", city["communityTag"]],
-            *[["t", c] for c in cats],
-            *[["a11y", a] for a in a11y],
+            *[["t", c] for c in ev.get("cats", [])],
+            *[["a11y", a] for a in ev.get("a11y", [])],
             ["l", "it", "ISO-639-1"],
         ]
-        out.append(sign_event(sk, 31923, tags, desc))
+        out.append(sign_event(sk, 31923, tags, ev["desc"]))
     return out
 
+
+def build_merchant(sk: PrivateKey, city: dict, m: dict) -> dict:
+    mints = m.get("mints") or city.get("mints") or []
+    tags = [
+        ["d", stable_d(city["id"], m["id"])],
+        ["title", m["name"]],
+        ["location", m["address"]],
+        ["g", geohash_encode(m["lat"], m["lng"], 9)],
+        ["t", city["communityTag"]],
+        *[["t", c] for c in m.get("cats", [])],
+        *[["ecash", url] for url in mints],
+    ]
+    return sign_event(sk, MERCHANT_KIND, tags, m.get("about", ""))
+
+
+# ------------------------------------------------------------------ publish
 
 async def publish(relay: str, events: list[dict]) -> None:
     try:
@@ -104,7 +140,7 @@ async def publish(relay: str, events: list[dict]) -> None:
                 try:
                     reply = json.loads(await asyncio.wait_for(ws.recv(), 10))
                     ok = reply[0] == "OK" and reply[2]
-                    print(f"[{relay}] {ev['id'][:8]} -> "
+                    print(f"[{relay}] kind {ev['kind']:>5} {ev['id'][:8]} -> "
                           f"{'accepted' if ok else reply}")
                 except asyncio.TimeoutError:
                     print(f"[{relay}] {ev['id'][:8]} -> no reply")
@@ -112,28 +148,66 @@ async def publish(relay: str, events: list[dict]) -> None:
         print(f"[{relay}] failed: {exc}")
 
 
+def update_allowlist(city_path: Path, city: dict,
+                     org_pubkeys: list[str], merchant_pubkeys: list[str]) -> None:
+    city["trustedPublishers"] = sorted(set(city.get("trustedPublishers") or [])
+                                       | set(org_pubkeys))
+    city["trustedMerchants"] = sorted(set(city.get("trustedMerchants") or [])
+                                      | set(merchant_pubkeys))
+    city_path.write_text(json.dumps(city, indent=2, ensure_ascii=False) + "\n")
+    print(f"allow-lists updated in {city_path.name}: "
+          f"{len(city['trustedPublishers'])} publishers, "
+          f"{len(city['trustedMerchants'])} merchants")
+
+
 async def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--city", default="bari")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--update-allowlist", action="store_true",
+                    help="add demo pubkeys to the city profile allow-lists")
     args = ap.parse_args()
 
-    city = json.loads((ROOT / "config" / "cities" / f"{args.city}.json").read_text())
-    sk = load_or_create_key()
-    events = build_events(city, sk)
+    city_path = ROOT / "config" / "cities" / f"{args.city}.json"
+    city = json.loads(city_path.read_text())
+    demo = json.loads((ROOT / "config" / "cities" /
+                       f"{args.city}.demo.json").read_text())
+    keys = load_keys()
 
-    pub = xonly_pubkey(sk)
-    print(f"publishing as pubkey: {pub}")
-    trusted = city.get("trustedPublishers") or []
-    if trusted and pub not in trusted:
-        print("NOTE: this pubkey is not in trustedPublishers for "
-              f"'{city['id']}' — the client will hide these events until "
-              "you add it to the city profile.")
+    batch: list[dict] = []
+    org_pubkeys, merchant_pubkeys = [], []
+
+    for org in demo["organizations"]:
+        sk = key_for(keys, org["id"])
+        org_pubkeys.append(xonly_pubkey(sk))
+        batch.append(build_profile(sk, city, org, "organization"))
+        batch.extend(build_org_events(sk, city, org))
+
+    for m in demo["merchants"]:
+        sk = key_for(keys, m["id"])
+        merchant_pubkeys.append(xonly_pubkey(sk))
+        batch.append(build_profile(sk, city, m, "merchant"))
+        batch.append(build_merchant(sk, city, m))
+
+    print("entities:")
+    for kind_name, ents, pks in (("org", demo["organizations"], org_pubkeys),
+                                 ("merchant", demo["merchants"], merchant_pubkeys)):
+        for ent, pk in zip(ents, pks):
+            print(f"  [{kind_name:<8}] {ent['id']:<24} {pk}")
+
+    if args.update_allowlist:
+        update_allowlist(city_path, city, org_pubkeys, merchant_pubkeys)
+    else:
+        trusted = set(city.get("trustedPublishers") or [])
+        if trusted and not set(org_pubkeys) <= trusted:
+            print("NOTE: some demo pubkeys are NOT in trustedPublishers — "
+                  "the client will hide their events. "
+                  "Re-run with --update-allowlist to add them.")
 
     if args.dry_run:
-        print(json.dumps(events, indent=2, ensure_ascii=False))
+        print(json.dumps(batch, indent=2, ensure_ascii=False))
         return
-    await asyncio.gather(*(publish(r, events) for r in city["relays"]))
+    await asyncio.gather(*(publish(r, batch) for r in city["relays"]))
 
 
 if __name__ == "__main__":
