@@ -16,6 +16,7 @@
     <span class="brand-sub" data-i18n="tagline">eventi culturali · accessibilità</span>
   </div>
   <div class="topbar-right">
+    <button class="wallet-open" id="wallet-open" data-i18n="wallet">Portafoglio</button>
     <span class="relay-status" id="relay-status" title="relays">○ 0</span>
     <button class="lang-toggle" id="lang-toggle" aria-label="Cambia lingua">EN</button>
   </div>
@@ -31,6 +32,17 @@
     <section class="panel">
       <h2 class="panel-title" data-i18n="filters_cat">Categorie</h2>
       <div class="chip-row" id="category-chips"></div>
+    </section>
+
+    <section class="panel">
+      <h2 class="panel-title">
+        <span data-i18n="merchants">Esercizi ecash</span>
+        <span class="count" id="merchant-count">0</span>
+      </h2>
+      <label class="a11y-check merchant-check">
+        <input type="checkbox" id="merchant-toggle" checked>
+        <span data-i18n="show_merchants">Mostra sulla mappa</span>
+      </label>
     </section>
 
     <section class="panel grow">
@@ -60,6 +72,36 @@
   </section>
 </main>
 
+<div class="modal" id="wallet-modal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="wallet-title">
+    <div class="modal-head">
+      <h2 id="wallet-title" data-i18n="wallet">Portafoglio</h2>
+      <button class="modal-close" id="wallet-close" aria-label="Chiudi">×</button>
+    </div>
+
+    <div class="wallet-balance-row">
+      <span class="time-eyebrow" data-i18n="wallet_balance">Saldo</span>
+      <span class="wallet-balance" id="wallet-balance">0 sat</span>
+      <span class="wallet-balance-note" id="wallet-balance-note"></span>
+    </div>
+
+    <h3 class="panel-title" data-i18n="wallet_mints">Mint della città</h3>
+    <ul class="mint-list" id="wallet-mints"></ul>
+
+    <h3 class="panel-title" data-i18n="wallet_receive">Ricevi token</h3>
+    <textarea id="wallet-token-input" rows="3"
+      data-i18n-placeholder="wallet_receive_hint"
+      placeholder="Incolla un token Cashu (cashuA…)"></textarea>
+    <div class="wallet-actions">
+      <button class="primary" id="wallet-receive-btn"
+        data-i18n="wallet_receive_btn">Aggiungi al portafoglio</button>
+    </div>
+    <div class="wallet-msg" id="wallet-receive-result"></div>
+
+    <p class="wallet-soon" data-i18n="wallet_soon">Invio e pagamenti in arrivo nel prossimo passo.</p>
+  </div>
+</div>
+
 <template id="event-item-tpl">
   <li class="event-item" tabindex="0">
     <div class="event-when"></div>
@@ -75,6 +117,7 @@
 <script src="/static/js/i18n.js"></script>
 <script src="/static/js/verify.js"></script>
 <script src="/static/js/nostr.js"></script>
+<script src="/static/js/wallet.js"></script>
 <script src="/static/js/app.js"></script>
 </body>
 </html>
