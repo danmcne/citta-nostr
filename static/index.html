@@ -1,1 +1,80 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>città nostr — Bari</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
 
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">città nostr</span>
+    <span class="brand-city" id="brand-name">Bari</span>
+    <span class="brand-sub" data-i18n="tagline">eventi culturali · accessibilità</span>
+  </div>
+  <div class="topbar-right">
+    <span class="relay-status" id="relay-status" title="relays">○ 0</span>
+    <button class="lang-toggle" id="lang-toggle" aria-label="Cambia lingua">EN</button>
+  </div>
+</header>
+
+<main class="layout">
+  <aside class="sidebar">
+    <section class="panel">
+      <h2 class="panel-title" data-i18n="filters_a11y">Accessibilità</h2>
+      <div class="a11y-filters" id="a11y-filters"></div>
+    </section>
+
+    <section class="panel">
+      <h2 class="panel-title" data-i18n="filters_cat">Categorie</h2>
+      <div class="chip-row" id="category-chips"></div>
+    </section>
+
+    <section class="panel grow">
+      <h2 class="panel-title">
+        <span data-i18n="events">Eventi</span>
+        <span class="count" id="event-count">0</span>
+      </h2>
+      <ol class="event-list" id="event-list"></ol>
+      <div class="empty" id="empty-state" hidden>
+        <p data-i18n="empty_title">Nessun evento trovato.</p>
+        <p class="empty-hint" data-i18n="empty_hint">Prova ad allargare i filtri o la finestra temporale.</p>
+      </div>
+    </section>
+  </aside>
+
+  <section class="map-wrap">
+    <div id="map" role="application" aria-label="Mappa eventi"></div>
+
+    <!-- signature element: the temporal scrubber -->
+    <div class="time-scrubber" role="group" aria-label="Finestra temporale">
+      <label class="time-label" for="time-range">
+        <span class="time-eyebrow" data-i18n="when">Quando</span>
+        <span class="time-readout" id="time-readout">entro 7 giorni</span>
+      </label>
+      <input type="range" id="time-range" min="1" max="31" step="1" value="7">
+    </div>
+  </section>
+</main>
+
+<template id="event-item-tpl">
+  <li class="event-item" tabindex="0">
+    <div class="event-when"></div>
+    <div class="event-main">
+      <div class="event-title"></div>
+      <div class="event-venue"></div>
+      <div class="event-badges"></div>
+    </div>
+  </li>
+</template>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="/static/js/i18n.js"></script>
+<script src="/static/js/verify.js"></script>
+<script src="/static/js/nostr.js"></script>
+<script src="/static/js/app.js"></script>
+</body>
+</html>
