@@ -1,1 +1,36 @@
-
+{
+  "id": "bari",
+  "name": "Bari",
+  "country": "IT",
+  "languages": [
+    "it",
+    "en"
+  ],
+  "defaultLanguage": "it",
+  "communityTag": "bari",
+  "relays": [
+    "wss://relay.damus.io",
+    "wss://nos.lol",
+    "wss://relay.nostr.band"
+  ],
+  "mints": [],
+  "trustedPublishers": [],
+  "mapCenter": {
+    "lat": 41.1257,
+    "lng": 16.8676
+  },
+  "mapZoom": 13,
+  "geoBounds": {
+    "minLat": 40.99,
+    "maxLat": 41.22,
+    "minLng": 16.7,
+    "maxLng": 17.05
+  },
+  "branding": {
+    "displayName": {
+      "it": "città nostr — Bari",
+      "en": "città nostr — Bari"
+    },
+    "accent": "#0E5A8A"
+  }
+}
