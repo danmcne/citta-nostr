@@ -13,8 +13,11 @@
     "wss://nos.lol",
     "wss://relay.nostr.band"
   ],
-  "mints": [],
+  "mints": [
+    "https://testnut.cashu.space"
+  ],
   "trustedPublishers": [],
+  "trustedMerchants": [],
   "mapCenter": {
     "lat": 41.1257,
     "lng": 16.8676
