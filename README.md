@@ -1,4 +1,4 @@
-# città nostr — v0.2 (Phase 1: Core Event Map)
+# città nostr — v0.3 (Phase 1 complete + Phase 2 foundations)
 
 A city-configurable client platform for **cultural events with first-class
 accessibility data**, built on Nostr. Bari is the reference city; any city is
@@ -27,16 +27,20 @@ uvicorn server.app:app --reload --port 8400
 # open http://localhost:8400
 ```
 
-There will be no events until someone publishes some. Seed demo data:
+There will be no events until someone publishes some. Seed the demo dataset
+(4 demo organizations with profiles + 6 events, 4 demo ecash merchants):
 
 ```bash
-python -m tools.seed_events --city bari --dry-run   # inspect first
-python -m tools.seed_events --city bari             # publish to city relays
+python -m tools.seed_events --city bari --dry-run            # inspect first
+python -m tools.seed_events --city bari --update-allowlist   # publish + trust
 ```
 
-The seeder writes a throwaway key to `data/.seed_key` and publishes six sample
-Bari events (kind 31923, tagged `["t","bari"]`) to the relays in
-`config/cities/bari.json`. Reload the app and they appear on the map.
+`--update-allowlist` writes the generated org/merchant pubkeys into
+`trustedPublishers` / `trustedMerchants` in the city profile, so the client
+shows them with a ✓. Keys persist in `data/demo_keys.json`; d-tags are
+deterministic, so re-running the seeder *replaces* the published data instead
+of duplicating it. All demo content lives in `config/cities/bari.demo.json` —
+including every venue coordinate, so location fixes happen in that one file.
 
 Optional — run the indexer (foundation for server-side search):
 
@@ -62,7 +66,7 @@ docs/EVENT_SCHEMA.md      the publishing convention organizations follow
 Copy `config/cities/bari.json`, change id/relays/bounds/languages, open
 `/?city=<id>`. That's the whole multi-tenant mechanism for now.
 
-## Trust model (v0.2)
+## Trust model
 
 Every event is verified twice over before display:
 
@@ -72,19 +76,39 @@ Every event is verified twice over before display:
    (`static/js/verify.js`, pure JS over BigInt + WebCrypto, no dependencies,
    ~10 ms/event); the indexer does the same via coincurve. Invalid events
    are dropped and counted (`pool.rejected`, console warning).
-2. **Authorization** — if `trustedPublishers` in the city profile is
-   non-empty, only events signed by those pubkeys are accepted (client and
-   indexer both enforce it). An empty list = open bootstrap mode, where
-   anyone may tag `bari`. For a real deployment, list the pubkeys of
-   accredited cultural organizations; the seeder prints its pubkey so you
-   can add it while testing.
+2. **Authorization** — if `trustedPublishers` / `trustedMerchants` in the
+   city profile are non-empty, only events/merchants signed by those pubkeys
+   are accepted (client and indexer both enforce events; the client enforces
+   merchants). Empty lists = open bootstrap mode. The seeder's
+   `--update-allowlist` flag maintains the lists for the demo identities.
+
+3. **Identity** — publishers' kind-0 profiles are fetched (for allow-listed
+   keys immediately, otherwise on discovery) and shown as
+   "pubblicato da \<name\> ✓" where ✓ marks an allow-listed key. Profiles
+   carry a `cittanostr` extension with the org's home venue and geohash —
+   see `docs/EVENT_SCHEMA.md`.
 
 `verify.js` needs a secure context for WebCrypto — localhost or https,
 which any real deployment has anyway.
 
-## Known limitations (v0.2)
+## Wallet (Phase 2, step 1)
 
-- No marker clustering (fine up to a few hundred events).
-- The allow-list is flat; per-organization profiles (NIP-01 kind 0 metadata,
-  names shown in the UI) are a natural next step.
-- Wallet, merchants, tickets: Phase 2.
+The Wallet button opens the Cashu wallet panel: it shows the city's mints
+with live status (NUT-06 `/v1/info`), decodes pasted Cashu V3 tokens
+(`cashuA…`), and keeps received tokens in localStorage. **Honest status:**
+received tokens are *not yet redeemed* — claiming a token requires a
+swap at the mint (BDHKE blinding), which is the next implementation step;
+until then the balance is labeled as unredeemed and must not be trusted for
+real value. `static/js/wallet.js` defines the protocol-agnostic
+`WalletProvider` interface the UI talks to. Bari's profile ships with
+`https://testnut.cashu.space` (a public TEST mint — fake money) for
+development.
+
+## Known limitations (v0.3)
+
+- Wallet cannot yet swap (claim), mint, send, or melt (pay) — next step.
+- Cashu V4 (`cashuB`, CBOR) tokens not decoded yet.
+- No marker clustering (fine up to a few hundred nodes).
+- Merchant kind 33888 is a provisional convention (documented).
+- The indexer stores events only; merchants/profiles indexing comes with
+  server-side search.
