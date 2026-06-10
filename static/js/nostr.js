@@ -5,6 +5,7 @@
 "use strict";
 
 const CALENDAR_KINDS = [31922, 31923];
+const MERCHANT_KIND = 33888;
 
 class RelayPool {
   /**
@@ -20,12 +21,25 @@ class RelayPool {
     this.seenIds = new Set();
     this.rejected = 0;          // events that failed verification
     this.subId = "cittanostr-" + Math.random().toString(36).slice(2, 10);
-    this.filter = null;
+    this.filters = null;
+    this.profileFilter = null;  // lazily built kind-0 request
   }
 
-  subscribe(filter) {
-    this.filter = filter;
+  /** @param {object[]} filters  one REQ carrying multiple NIP-01 filters */
+  subscribe(filters) {
+    this.filters = filters;
     this.relays.forEach(url => this._connect(url));
+  }
+
+  /** Fetch kind-0 profiles for a set of authors (replaces previous request). */
+  requestProfiles(pubkeys) {
+    if (!pubkeys.length) return;
+    this.profileFilter = { kinds: [0], authors: [...pubkeys] };
+    for (const ws of this.sockets.values()) {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(["REQ", this.subId + "-p", this.profileFilter]));
+      }
+    }
   }
 
   _connect(url, attempt = 0) {
@@ -35,13 +49,16 @@ class RelayPool {
 
     ws.onopen = () => {
       this._status();
-      ws.send(JSON.stringify(["REQ", this.subId, this.filter]));
+      ws.send(JSON.stringify(["REQ", this.subId, ...this.filters]));
+      if (this.profileFilter) {
+        ws.send(JSON.stringify(["REQ", this.subId + "-p", this.profileFilter]));
+      }
     };
 
     ws.onmessage = (msg) => {
       let data;
       try { data = JSON.parse(msg.data); } catch { return; }
-      if (data[0] === "EVENT" && data[1] === this.subId) {
+      if (data[0] === "EVENT" && String(data[1]).startsWith(this.subId)) {
         const ev = data[2];
         if (this.seenIds.has(ev.id)) return;
         this.seenIds.add(ev.id);
@@ -66,8 +83,16 @@ class RelayPool {
                    `(${this.rejected} rejected total)`);
       return;
     }
-    const node = parseCalendarEvent(ev);
-    if (node) this.onEvent(node);
+    if (CALENDAR_KINDS.includes(ev.kind)) {
+      const node = parseCalendarEvent(ev);
+      if (node) this.onEvent({ type: "event", node });
+    } else if (ev.kind === MERCHANT_KIND) {
+      const node = parseMerchant(ev);
+      if (node) this.onEvent({ type: "merchant", node });
+    } else if (ev.kind === 0) {
+      const node = parseProfile(ev);
+      if (node) this.onEvent({ type: "profile", node });
+    }
   }
 
   _status() {
@@ -138,6 +163,49 @@ function parseCalendarEvent(ev) {
     cats: [...new Set(tagValues(tags, "t"))],
     image: firstTag(tags, "image"),
   };
+}
+
+/** Raw kind-33888 event -> normalized MerchantNode, or null. */
+function parseMerchant(ev) {
+  if (ev.kind !== MERCHANT_KIND) return null;
+  const tags = ev.tags || [];
+  const d = firstTag(tags, "d");
+  const name = firstTag(tags, "title");
+  if (!d || !name) return null;
+
+  let lat = null, lng = null;
+  const ghs = tagValues(tags, "g");
+  if (ghs.length) {
+    const pt = geohashDecode(ghs.reduce((a, b) => (b.length > a.length ? b : a)));
+    if (pt) [lat, lng] = pt;
+  }
+  const mints = tagValues(tags, "ecash");
+  return {
+    id: ev.id, pubkey: ev.pubkey, kind: ev.kind, d,
+    createdAt: ev.created_at,
+    name,
+    description: ev.content || "",
+    address: firstTag(tags, "location"),
+    lat, lng,
+    cats: [...new Set(tagValues(tags, "t"))],
+    mints,
+    acceptsEcash: mints.length > 0,
+  };
+}
+
+/** Raw kind-0 event -> { pubkey, name, about, meta }, or null. */
+function parseProfile(ev) {
+  if (ev.kind !== 0) return null;
+  try {
+    const c = JSON.parse(ev.content || "{}");
+    return {
+      pubkey: ev.pubkey,
+      createdAt: ev.created_at,
+      name: c.name || c.display_name || null,
+      about: c.about || "",
+      meta: c.cittanostr || null,   // città nostr extension: city/role/venue/g
+    };
+  } catch { return null; }
 }
 
 // ------------------------------------------------------------- geohash

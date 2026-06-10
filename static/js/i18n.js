@@ -14,6 +14,21 @@ const I18N = {
     empty_hint: "Prova ad allargare i filtri o la finestra temporale.",
     today: "oggi",
     tomorrow: "domani",
+    merchants: "Esercizi ecash",
+    show_merchants: "Mostra sulla mappa",
+    accepts_ecash: "accetta ecash",
+    published_by: "pubblicato da",
+    trusted_publisher: "Organizzazione accreditata dalla città",
+    wallet: "Portafoglio",
+    wallet_balance: "Saldo",
+    wallet_unredeemed: "token ricevuti, non ancora riscattati presso il mint",
+    wallet_empty: "nessun token ricevuto",
+    wallet_mints: "Mint della città",
+    wallet_no_mints: "Nessun mint configurato per questa città.",
+    wallet_receive: "Ricevi token",
+    wallet_receive_hint: "Incolla un token Cashu (cashuA…)",
+    wallet_receive_btn: "Aggiungi al portafoglio",
+    wallet_soon: "Invio e pagamenti in arrivo nel prossimo passo.",
     a11y: {
       "wheelchair": "Sedia a rotelle",
       "step-free": "Senza gradini",
@@ -37,6 +52,21 @@ const I18N = {
     empty_hint: "Try widening the filters or the time window.",
     today: "today",
     tomorrow: "tomorrow",
+    merchants: "Ecash merchants",
+    show_merchants: "Show on map",
+    accepts_ecash: "accepts ecash",
+    published_by: "published by",
+    trusted_publisher: "Organization accredited by the city",
+    wallet: "Wallet",
+    wallet_balance: "Balance",
+    wallet_unredeemed: "tokens received, not yet redeemed at the mint",
+    wallet_empty: "no tokens received",
+    wallet_mints: "City mints",
+    wallet_no_mints: "No mints configured for this city.",
+    wallet_receive: "Receive token",
+    wallet_receive_hint: "Paste a Cashu token (cashuA…)",
+    wallet_receive_btn: "Add to wallet",
+    wallet_soon: "Sending and payments arrive in the next step.",
     a11y: {
       "wheelchair": "Wheelchair accessible",
       "step-free": "Step-free access",
@@ -65,6 +95,10 @@ function applyStaticI18n() {
   document.querySelectorAll("[data-i18n]").forEach(el => {
     const v = t(el.dataset.i18n);
     if (typeof v === "string") el.textContent = v;
+  });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+    const v = t(el.dataset.i18nPlaceholder);
+    if (typeof v === "string") el.placeholder = v;
   });
   document.getElementById("lang-toggle").textContent =
     LANG === "it" ? "EN" : "IT";
