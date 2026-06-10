@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parent.parent
 CITIES_DIR = ROOT / "config" / "cities"
 STATIC_DIR = ROOT / "static"
 
-app = FastAPI(title="Città Nostr", version="0.2.0")
+app = FastAPI(title="Città Nostr", version="0.3.1")
 
 
 # ------------------------------------------------------------------ config
