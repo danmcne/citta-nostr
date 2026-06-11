@@ -210,6 +210,7 @@ button { font: inherit; cursor: pointer; }
 }
 .badge.cat { background: var(--sea-tint); color: var(--sea-deep); font-weight: 500; }
 .badge.ecash { background: #F7EBD4; color: var(--amber); }
+.badge.muted { background: var(--paper); color: var(--ink-soft); }
 
 .empty { text-align: center; color: var(--ink-soft); padding: 24px 8px; }
 .empty p { margin: 4px 0; }
@@ -230,9 +231,21 @@ button { font: inherit; cursor: pointer; }
   cursor: pointer;
 }
 .marker.a11y { background: var(--green); }
-.marker.merchant {
-  background: var(--amber);
-  border-radius: 4px;          /* squares = commerce, circles = events */
+.marker.place {                /* squares = places, circles = events */
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 2px solid var(--ink-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 1;
+}
+.marker.place.ecash {
+  background: #F7EBD4;             /* amber = participates in the economy */
+  border-color: var(--amber);
 }
 .marker.dim { opacity: .25; pointer-events: none; }
 
@@ -398,6 +411,47 @@ button.primary:hover { background: var(--sea-deep); }
 .wallet-msg.ok { color: var(--green); }
 .wallet-msg.err { color: #C24141; }
 
+.popup-buy { margin-top: 10px; }
+.buy-btn { width: 100%; }
+
+.ticket-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+.ticket-head { font-weight: 650; margin-bottom: 6px; }
+.ticket-item textarea {
+  width: 100%;
+  font-size: 11px;
+  font-family: ui-monospace, monospace;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px 6px;
+  resize: none;
+  color: var(--ink-soft);
+}
+
+.wallet-send-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.wallet-send-row input {
+  width: 90px;
+  font: inherit;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 10px;
+}
+#wallet-send-output {
+  width: 100%;
+  margin-top: 6px;
+  font-size: 11px;
+  font-family: ui-monospace, monospace;
+}
+
 .wallet-soon {
   font-size: 12.5px;
   color: var(--ink-soft);
@@ -406,7 +460,22 @@ button.primary:hover { background: var(--sea-deep); }
   padding-top: 10px;
 }
 
-.merchant-check { border: none; padding-left: 0; }
+.place-filters { display: grid; grid-template-columns: 1fr; gap: 4px; }
+
+.place-check { border: none; padding: 4px 2px; }
+.place-check .type-count {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.ecash-row {
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  margin-top: 6px;
+  padding-top: 9px;
+}
+.places-empty { margin: 6px 0 0; text-align: left; }
 
 /* ---------------------------------------------------------------- mobile */
 

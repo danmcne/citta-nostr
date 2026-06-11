@@ -5,7 +5,9 @@
 "use strict";
 
 const CALENDAR_KINDS = [31922, 31923];
-const MERCHANT_KIND = 33888;
+const PLACE_KIND = 33888;
+const PLACE_TYPES = ["venue", "merchant", "food", "transport", "worship",
+                     "poi", "info"];
 
 class RelayPool {
   /**
@@ -86,9 +88,9 @@ class RelayPool {
     if (CALENDAR_KINDS.includes(ev.kind)) {
       const node = parseCalendarEvent(ev);
       if (node) this.onEvent({ type: "event", node });
-    } else if (ev.kind === MERCHANT_KIND) {
-      const node = parseMerchant(ev);
-      if (node) this.onEvent({ type: "merchant", node });
+    } else if (ev.kind === PLACE_KIND) {
+      const node = parsePlace(ev);
+      if (node) this.onEvent({ type: "place", node });
     } else if (ev.kind === 0) {
       const node = parseProfile(ev);
       if (node) this.onEvent({ type: "profile", node });
@@ -146,6 +148,15 @@ function parseCalendarEvent(ev) {
     if (pt) [lat, lng] = pt;
   }
 
+  let price = null;
+  const priceTag = tags.find(tg => tg[0] === "price" && tg.length >= 2);
+  if (priceTag) {
+    const amount = parseInt(priceTag[1], 10);
+    if (Number.isInteger(amount) && amount > 0) {
+      price = { amount, unit: priceTag[2] || "sat" };
+    }
+  }
+
   return {
     id: ev.id,
     pubkey: ev.pubkey,
@@ -162,16 +173,19 @@ function parseCalendarEvent(ev) {
     a11y: [...new Set(tagValues(tags, "a11y").filter(v => A11Y_VOCAB.has(v)))],
     cats: [...new Set(tagValues(tags, "t"))],
     image: firstTag(tags, "image"),
+    price,
   };
 }
 
-/** Raw kind-33888 event -> normalized MerchantNode, or null. */
-function parseMerchant(ev) {
-  if (ev.kind !== MERCHANT_KIND) return null;
+/** Raw kind-33888 event -> normalized PlaceNode, or null. */
+function parsePlace(ev) {
+  if (ev.kind !== PLACE_KIND) return null;
   const tags = ev.tags || [];
   const d = firstTag(tags, "d");
   const name = firstTag(tags, "title");
   if (!d || !name) return null;
+  const rawType = firstTag(tags, "type") || "merchant";
+  const placeType = PLACE_TYPES.includes(rawType) ? rawType : "poi";
 
   let lat = null, lng = null;
   const ghs = tagValues(tags, "g");
@@ -184,6 +198,7 @@ function parseMerchant(ev) {
     id: ev.id, pubkey: ev.pubkey, kind: ev.kind, d,
     createdAt: ev.created_at,
     name,
+    placeType,
     description: ev.content || "",
     address: firstTag(tags, "location"),
     lat, lng,

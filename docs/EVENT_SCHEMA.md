@@ -84,22 +84,49 @@ anywhere); the profile geohash is the organization's *home* venue. Keeping
 venue coordinates in profiles means a wrong location is fixed in one place
 by the org itself — not by every client.
 
-## Merchants (kind 33888, provisional)
+## Places (kind 33888, provisional)
 
-Parameterized-replaceable "merchant node", same replaceability rules as
-events. The kind number is a città nostr convention until a suitable NIP
-standardizes merchant directories.
+Parameterized-replaceable "place node": anything with a fixed location that
+participates in the network — shops, restaurants, venues, stations, churches,
+info points. Same replaceability rules as events. The kind number is a città
+nostr convention until a suitable NIP standardizes place directories.
 
 ```
 ["d",        "<stable-id>"]            required
 ["title",    "Caffè del Borgo"]        required — display name
+["type",     "food"]                   place type (see vocabulary below);
+                                       missing -> "merchant",
+                                       unknown -> rendered as "poi"
 ["location", "Piazza Mercantile, Bari"]
 ["g",        "sr1n0..."]               geohash
 ["t",        "bari"]                   required — community tag
 ["t",        "caffè"]                  zero or more category tags
 ["ecash",    "https://mint.example"]   one per accepted mint;
-                                       presence = "accepts ecash"
+                                       presence = "accepts ecash";
+                                       absence = does not (yet) accept
 ```
+
+### Place type vocabulary
+
+| type        | rendered as            |
+|-------------|------------------------|
+| `venue`     | cultural venue / box office |
+| `merchant`  | shop                   |
+| `food`      | food & drink           |
+| `transport` | station, terminal, mobility |
+| `worship`   | place of worship       |
+| `poi`       | point of interest      |
+| `info`      | tourist info point     |
+
+Append-only, like the a11y vocabulary. Each type is a toggleable map layer
+in the client.
+
+The `ecash` tags are orthogonal to type — a castle box office can accept
+ecash, a church likely won't. Unlike `a11y` (where absence means *unknown*),
+absence of any `ecash` tag is shown as "ecash not available": the place stays
+in the directory, just without the amber highlight. The map thereby shows
+ecash adoption spreading through the city. The `trustedPlaces` allow-list in
+the city profile gates display exactly like `trustedPublishers` gates events.
 
 `content` = short description. The client renders merchants as amber squares
 (events are circles) and shows the mint URLs in the popup. The

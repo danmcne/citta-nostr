@@ -1,0 +1,348 @@
+{
+  "_note": "Demo dataset for development. Coordinates are best-effort (Kismet, Margherita, San Nicola checked against published sources; places marked 'approx' in their about-text were NOT verified) — correct them here and re-run tools/seed_events.py. In production every organization and place publishes its own profile and nodes.",
+  "organizations": [
+    {
+      "id": "fondazione-petruzzelli",
+      "name": "Fondazione Teatro Petruzzelli",
+      "about": "Stagione lirica e sinfonica del Teatro Petruzzelli. [profilo demo]",
+      "venue": "Teatro Petruzzelli",
+      "address": "Corso Cavour 12, Bari",
+      "lat": 41.1216,
+      "lng": 16.8731,
+      "events": [
+        {
+          "title": "Concerto sinfonico",
+          "desc": "Stagione sinfonica al Teatro Petruzzelli.",
+          "offsetH": 68,
+          "durationH": 2,
+          "cats": [
+            "musica",
+            "teatro"
+          ],
+          "a11y": [
+            "wheelchair",
+            "accessible-toilet",
+            "hearing-loop"
+          ],
+          "priceSat": 210
+        }
+      ]
+    },
+    {
+      "id": "comune-bari-cultura",
+      "name": "Comune di Bari — Cultura",
+      "about": "Eventi culturali promossi dall'assessorato alla cultura. [profilo demo]",
+      "venue": "Comune di Bari",
+      "address": "Via Roberto da Bari 1, Bari",
+      "lat": 41.1235,
+      "lng": 16.869,
+      "events": [
+        {
+          "title": "Visita guidata a Bari Vecchia",
+          "desc": "Passeggiata tra San Nicola e la Cattedrale.",
+          "venue": "Basilica di San Nicola",
+          "lat": 41.1303,
+          "lng": 16.8702,
+          "offsetH": 34,
+          "durationH": 2,
+          "cats": [
+            "cultura",
+            "storia"
+          ],
+          "a11y": [
+            "family-friendly"
+          ]
+        },
+        {
+          "title": "Cinema all'aperto",
+          "desc": "Rassegna estiva sul lungomare.",
+          "venue": "Lungomare Nazario Sauro",
+          "lat": 41.1213,
+          "lng": 16.879,
+          "offsetH": 93,
+          "durationH": 2,
+          "cats": [
+            "cinema"
+          ],
+          "a11y": [
+            "wheelchair",
+            "step-free",
+            "family-friendly"
+          ],
+          "priceSat": 50
+        },
+        {
+          "title": "Festa di quartiere al Libertà",
+          "desc": "Musica dal vivo e cucina popolare.",
+          "venue": "Piazza Risorgimento",
+          "lat": 41.1207,
+          "lng": 16.8588,
+          "offsetH": 162,
+          "durationH": 5,
+          "cats": [
+            "festa",
+            "musica"
+          ],
+          "a11y": []
+        }
+      ]
+    },
+    {
+      "id": "teatri-di-bari",
+      "name": "Teatri di Bari — Kismet",
+      "about": "Teatro Kismet OperA, opificio per le arti. [profilo demo]",
+      "venue": "Teatro Kismet OperA",
+      "address": "Strada San Giorgio Martire 22/F, Bari",
+      "lat": 41.1099,
+      "lng": 16.8385,
+      "events": [
+        {
+          "title": "Laboratorio LIS per bambini",
+          "desc": "Laboratorio teatrale con interprete LIS.",
+          "offsetH": 137,
+          "durationH": 1.5,
+          "cats": [
+            "teatro",
+            "bambini"
+          ],
+          "a11y": [
+            "sign-language",
+            "family-friendly",
+            "quiet-space"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "polo-arti-margherita",
+      "name": "Polo Arti Contemporanee Margherita",
+      "about": "Mostre ed esposizioni al Teatro Margherita. [profilo demo]",
+      "venue": "Teatro Margherita",
+      "address": "Piazza IV Novembre, Bari",
+      "lat": 41.1264,
+      "lng": 16.8729,
+      "events": [
+        {
+          "title": "Mostra di arte contemporanea",
+          "desc": "Esposizione con percorso tattile e audiodescrizione.",
+          "offsetH": 12,
+          "durationH": 8,
+          "cats": [
+            "arte",
+            "mostra"
+          ],
+          "a11y": [
+            "wheelchair",
+            "audio-description",
+            "accessible-toilet"
+          ],
+          "priceSat": 80
+        }
+      ]
+    }
+  ],
+  "places": [
+    {
+      "id": "caffe-del-borgo",
+      "name": "Caffè del Borgo",
+      "about": "Caffetteria in Piazza Mercantile. [esercizio demo]",
+      "address": "Piazza Mercantile, Bari",
+      "lat": 41.1295,
+      "lng": 16.8714,
+      "cats": [
+        "caffè"
+      ],
+      "acceptsEcash": true,
+      "type": "food"
+    },
+    {
+      "id": "focacceria-san-nicola",
+      "name": "Focacceria San Nicola",
+      "about": "Focaccia barese a due passi dalla Basilica. [esercizio demo]",
+      "address": "Strada Palazzo di Città, Bari",
+      "lat": 41.1297,
+      "lng": 16.8697,
+      "cats": [
+        "cibo"
+      ],
+      "acceptsEcash": true,
+      "type": "food"
+    },
+    {
+      "id": "libreria-adriatica",
+      "name": "Libreria Adriatica",
+      "about": "Libreria indipendente in via Sparano. [esercizio demo]",
+      "address": "Via Sparano da Bari, Bari",
+      "lat": 41.123,
+      "lng": 16.8696,
+      "cats": [
+        "libri"
+      ],
+      "acceptsEcash": true,
+      "type": "merchant"
+    },
+    {
+      "id": "bottega-del-vinile",
+      "name": "Bottega del Vinile",
+      "about": "Dischi nuovi e usati alla Madonnella. [esercizio demo]",
+      "address": "Madonnella, Bari",
+      "lat": 41.1224,
+      "lng": 16.8775,
+      "cats": [
+        "musica"
+      ],
+      "acceptsEcash": true,
+      "type": "merchant"
+    },
+    {
+      "id": "gelateria-lungomare",
+      "name": "Gelateria del Lungomare",
+      "about": "Gelato artigianale fronte mare. [esercizio demo]",
+      "address": "Lungomare Nazario Sauro, Bari",
+      "lat": 41.1219,
+      "lng": 16.8772,
+      "cats": [
+        "cibo",
+        "gelato"
+      ],
+      "acceptsEcash": true,
+      "type": "food"
+    },
+    {
+      "id": "officina-bici-madonnella",
+      "name": "Officina Bici Madonnella",
+      "about": "Riparazione e noleggio biciclette. [esercizio demo]",
+      "address": "Madonnella, Bari",
+      "lat": 41.1206,
+      "lng": 16.88,
+      "cats": [
+        "bici",
+        "servizi"
+      ],
+      "acceptsEcash": true,
+      "type": "merchant"
+    },
+    {
+      "id": "trattoria-della-muraglia",
+      "name": "Trattoria della Muraglia",
+      "about": "Cucina barese sulla muraglia. [esercizio demo]",
+      "address": "Bari Vecchia, Bari",
+      "lat": 41.131,
+      "lng": 16.868,
+      "cats": [
+        "cibo",
+        "ristorante"
+      ],
+      "acceptsEcash": false,
+      "type": "food"
+    },
+    {
+      "id": "cartoleria-murat",
+      "name": "Cartoleria Murat",
+      "about": "Cartoleria e belle arti in via Argiro. [esercizio demo]",
+      "address": "Via Argiro, Bari",
+      "lat": 41.1225,
+      "lng": 16.8718,
+      "cats": [
+        "servizi"
+      ],
+      "acceptsEcash": false,
+      "type": "merchant"
+    },
+    {
+      "id": "pescheria-n-derr",
+      "name": "Pescheria del Molo",
+      "about": "Pesce fresco al molo San Nicola. [esercizio demo]",
+      "address": "Molo San Nicola, Bari",
+      "lat": 41.128,
+      "lng": 16.876,
+      "cats": [
+        "cibo",
+        "mercato"
+      ],
+      "acceptsEcash": false,
+      "type": "merchant"
+    },
+    {
+      "id": "petruzzelli-botteghino",
+      "name": "Botteghino Teatro Petruzzelli",
+      "about": "Biglietteria del Politeama. [demo]",
+      "type": "venue",
+      "address": "Corso Cavour 12, Bari",
+      "lat": 41.1216,
+      "lng": 16.8731,
+      "cats": [
+        "teatro"
+      ],
+      "acceptsEcash": true
+    },
+    {
+      "id": "castello-svevo",
+      "name": "Castello Svevo",
+      "about": "Fortezza normanno-sveva, sede espositiva. [demo, approx]",
+      "type": "poi",
+      "address": "Piazza Federico II di Svevia, Bari",
+      "lat": 41.1288,
+      "lng": 16.8669,
+      "cats": [
+        "storia"
+      ],
+      "acceptsEcash": true
+    },
+    {
+      "id": "basilica-san-nicola",
+      "name": "Basilica di San Nicola",
+      "about": "Basilica pontificia, mèta di pellegrinaggio. [demo]",
+      "type": "worship",
+      "address": "Largo Abate Elia 13, Bari",
+      "lat": 41.1303,
+      "lng": 16.8702,
+      "cats": [],
+      "acceptsEcash": false
+    },
+    {
+      "id": "cattedrale-san-sabino",
+      "name": "Cattedrale di San Sabino",
+      "about": "Cattedrale romanica di Bari. [demo, approx]",
+      "type": "worship",
+      "address": "Piazza dell'Odegitria, Bari",
+      "lat": 41.1283,
+      "lng": 16.8688,
+      "cats": [],
+      "acceptsEcash": false
+    },
+    {
+      "id": "bari-centrale",
+      "name": "Bari Centrale",
+      "about": "Stazione ferroviaria principale. [demo, approx]",
+      "type": "transport",
+      "address": "Piazza Aldo Moro, Bari",
+      "lat": 41.1172,
+      "lng": 16.87,
+      "cats": [],
+      "acceptsEcash": false
+    },
+    {
+      "id": "terminal-crociere",
+      "name": "Terminal Crociere",
+      "about": "Porto di Bari, terminal passeggeri. [demo, approx]",
+      "type": "transport",
+      "address": "Porto di Bari",
+      "lat": 41.1385,
+      "lng": 16.8645,
+      "cats": [],
+      "acceptsEcash": false
+    },
+    {
+      "id": "infopoint-ferrarese",
+      "name": "Infopoint Turistico",
+      "about": "Informazioni turistiche in piazza del Ferrarese. [demo, approx]",
+      "type": "info",
+      "address": "Piazza del Ferrarese, Bari",
+      "lat": 41.1278,
+      "lng": 16.8722,
+      "cats": [],
+      "acceptsEcash": false
+    }
+  ]
+}

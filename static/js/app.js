@@ -8,14 +8,15 @@ const GRACE = 6 * 3600;         // keep events visible 6h after start w/o end
 const state = {
   city: null,
   nodes: new Map(),             // "kind:pubkey:d" -> EventNode (latest wins)
-  merchants: new Map(),         // "kind:pubkey:d" -> MerchantNode
+  places: new Map(),            // "kind:pubkey:d" -> PlaceNode
   profiles: new Map(),          // pubkey -> kind-0 profile (latest wins)
   markers: new Map(),           // node key -> maplibregl.Marker
-  merchantMarkers: new Map(),
+  placeMarkers: new Map(),
   a11y: new Set(),              // required accessibility features (AND)
   cat: null,                    // active category or null
   windowDays: 7,
-  showMerchants: true,
+  placeTypes: new Set(PLACE_TYPES),   // enabled place layers
+  ecashOnly: false,
   map: null,
   pool: null,
   wallet: null,
@@ -34,7 +35,7 @@ async function boot() {
   initMap();
   initScrubber();
   initLangToggle();
-  initMerchantToggle();
+  initPlaceFilters();
   initWallet();
   connectRelays();
 }
@@ -77,12 +78,12 @@ function connectRelays() {
   );
   state.pool.subscribe([
     { kinds: CALENDAR_KINDS, "#t": [state.city.communityTag], limit: 500 },
-    { kinds: [MERCHANT_KIND], "#t": [state.city.communityTag], limit: 500 },
+    { kinds: [PLACE_KIND], "#t": [state.city.communityTag], limit: 500 },
   ]);
   // If the allow-lists are populated we know whose profiles to fetch now;
   // otherwise authors are discovered from incoming events (see _wantProfile).
   const known = [...new Set([...(state.city.trustedPublishers || []),
-                             ...(state.city.trustedMerchants || [])])];
+                             ...trustedPlacesList()])];
   if (known.length) state.pool.requestProfiles(known);
 }
 
@@ -101,18 +102,22 @@ function _wantProfile(pubkey) {
 
 function onIncoming({ type, node }) {
   if (type === "event") onEventNode(node);
-  else if (type === "merchant") onMerchantNode(node);
+  else if (type === "place") onPlaceNode(node);
   else if (type === "profile") onProfileNode(node);
 }
 
-function onMerchantNode(node) {
-  const trusted = state.city.trustedMerchants;
-  if (Array.isArray(trusted) && trusted.length &&
-      !trusted.includes(node.pubkey)) return;
+function trustedPlacesList() {
+  // trustedMerchants is the pre-v0.5 name; read both
+  return state.city.trustedPlaces || state.city.trustedMerchants || [];
+}
+
+function onPlaceNode(node) {
+  const trusted = trustedPlacesList();
+  if (trusted.length && !trusted.includes(node.pubkey)) return;
   const key = `${node.kind}:${node.pubkey}:${node.d}`;
-  const prev = state.merchants.get(key);
+  const prev = state.places.get(key);
   if (prev && prev.createdAt >= node.createdAt) return;
-  state.merchants.set(key, node);
+  state.places.set(key, node);
   _wantProfile(node.pubkey);
   queueRender();
 }
@@ -212,13 +217,47 @@ function updateReadout() {
     state.windowDays >= ALL_DAYS ? t("all_dates") : t("within_days")(state.windowDays);
 }
 
-function initMerchantToggle() {
-  const box = document.getElementById("merchant-toggle");
-  box.checked = state.showMerchants;
-  box.addEventListener("change", () => {
-    state.showMerchants = box.checked;
+const PLACE_GLYPHS = { venue: "\u{1F3AD}", merchant: "\u{1F6CD}\uFE0F",
+  food: "\u{1F37D}\uFE0F", transport: "\u{1F68D}", worship: "\u26EA",
+  poi: "\u{1F3DB}\uFE0F", info: "\u2139\uFE0F" };
+
+function initPlaceFilters() {
+  const only = document.getElementById("ecash-only-toggle");
+  only.checked = state.ecashOnly;
+  only.addEventListener("change", () => {
+    state.ecashOnly = only.checked;
     render();
   });
+  buildPlaceTypeFilters();
+}
+
+function buildPlaceTypeFilters() {
+  const box = document.getElementById("place-type-filters");
+  const counts = {};
+  for (const pNode of state.places.values()) {
+    counts[pNode.placeType] = (counts[pNode.placeType] || 0) + 1;
+  }
+  box.innerHTML = "";
+  for (const type of PLACE_TYPES) {
+    const label = document.createElement("label");
+    label.className = "a11y-check place-check";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.checked = state.placeTypes.has(type);
+    input.addEventListener("change", () => {
+      input.checked ? state.placeTypes.add(type)
+                    : state.placeTypes.delete(type);
+      render();
+    });
+    const text = document.createElement("span");
+    text.textContent = `${PLACE_GLYPHS[type]} ${tPlace(type)}`;
+    const count = document.createElement("span");
+    count.className = "type-count";
+    count.textContent = counts[type] || 0;
+    label.append(input, text, count);
+    box.append(label);
+  }
+  document.getElementById("places-empty").hidden = state.places.size > 0;
 }
 
 function initWallet() {
@@ -237,10 +276,13 @@ function initWallet() {
     async () => {
       const input = document.getElementById("wallet-token-input");
       const out = document.getElementById("wallet-receive-result");
+      out.textContent = "…";
+      out.className = "wallet-msg";
       try {
         const tok = await state.wallet.receive(input.value);
-        out.textContent = `+${tok.amount} ${tok.unit} · ${tok.mint}` +
-                          (tok.memo ? ` · "${tok.memo}"` : "");
+        out.textContent =
+          `+${tok.amount} ${tok.unit} · ${t("wallet_redeemed")} · ${tok.mint}` +
+          (tok.memo ? ` · "${tok.memo}"` : "");
         out.className = "wallet-msg ok";
         input.value = "";
         refreshWallet();
@@ -249,6 +291,84 @@ function initWallet() {
         out.className = "wallet-msg err";
       }
     });
+
+  document.getElementById("wallet-send-btn").addEventListener("click",
+    async () => {
+      const amountEl = document.getElementById("wallet-send-amount");
+      const out = document.getElementById("wallet-send-result");
+      out.textContent = "…";
+      out.className = "wallet-msg";
+      try {
+        const res = await state.wallet.send(parseInt(amountEl.value, 10));
+        out.textContent = "";
+        out.className = "wallet-msg ok";
+        const ta = document.createElement("textarea");
+        ta.readOnly = true;
+        ta.rows = 3;
+        ta.value = res.encoded;
+        ta.id = "wallet-send-output";
+        out.append(document.createTextNode(
+          `${res.amount} sat — ${t("wallet_send_done")}`), ta);
+        refreshWallet();
+      } catch (err) {
+        out.textContent = err.message;
+        out.className = "wallet-msg err";
+      }
+    });
+}
+
+function renderTickets() {
+  const box = document.getElementById("wallet-tickets");
+  const tickets = state.wallet.listTickets();
+  document.getElementById("wallet-tickets-section").hidden = !tickets.length;
+  box.innerHTML = "";
+  const locale = LANG === "it" ? "it-IT" : "en-GB";
+  for (const tk of [...tickets].reverse()) {
+    const li = document.createElement("li");
+    li.className = "ticket-item";
+    const head = document.createElement("div");
+    head.className = "ticket-head";
+    head.textContent = `\u{1F39F}\uFE0F ${tk.title} — ` +
+      new Date(tk.start * 1000).toLocaleString(locale,
+        { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) +
+      ` · ${tk.amount} ${tk.unit}`;
+    const ta = document.createElement("textarea");
+    ta.readOnly = true;
+    ta.rows = 2;
+    ta.value = tk.token;
+    ta.title = t("ticket_token_hint");
+    li.append(head, ta);
+    box.append(li);
+  }
+}
+
+function renderPendingTokens() {
+  const box = document.getElementById("wallet-pending");
+  const pending = state.wallet.listPending();
+  document.getElementById("wallet-pending-section").hidden = !pending.length;
+  box.innerHTML = "";
+  for (const enc of pending) {
+    const li = document.createElement("li");
+    li.className = "ticket-item";
+    const btn = document.createElement("button");
+    btn.className = "primary";
+    btn.textContent = t("wallet_redeem_now");
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      try {
+        await state.wallet.receive(enc);
+        state.wallet.removePending(enc);
+      } catch (err) {
+        if (/already spent|spent/.test(err.message)) {
+          state.wallet.removePending(enc);   // worthless, drop it
+        }
+        alert(err.message);
+      }
+      refreshWallet();
+    });
+    li.append(document.createTextNode(enc.slice(0, 28) + "… "), btn);
+    box.append(li);
+  }
 }
 
 async function refreshWallet() {
@@ -256,7 +376,10 @@ async function refreshWallet() {
   document.getElementById("wallet-balance").textContent =
     `${bal.amount} ${bal.unit}`;
   document.getElementById("wallet-balance-note").textContent =
-    bal.count ? t("wallet_unredeemed") : t("wallet_empty");
+    bal.perMint.map(m => `${m.amount} sat @ ${m.mint}`).join(" · ") ||
+    t("wallet_empty");
+  renderTickets();
+  renderPendingTokens();
 
   const list = document.getElementById("wallet-mints");
   list.textContent = "…";
@@ -315,10 +438,12 @@ function render() {
   buildCategoryChips(inWindow);
   renderList(visible);
   renderMarkers(visible);
-  renderMerchantMarkers();
+  const placesShown = renderPlaceMarkers();
+  buildPlaceTypeFilters();
 
   document.getElementById("event-count").textContent = visible.length;
-  document.getElementById("merchant-count").textContent = state.merchants.size;
+  document.getElementById("place-count").textContent =
+    `${placesShown}/${state.places.size}`;
   document.getElementById("empty-state").hidden = visible.length > 0;
 }
 
@@ -335,6 +460,9 @@ function renderList(nodes) {
       (n.location || "") +
       (org ? ` — ${org}${isTrustedPublisher(n.pubkey) ? " ✓" : ""}` : "");
     const badges = li.querySelector(".event-badges");
+    if (n.price) {
+      badges.append(badge(`\u{1F39F}\uFE0F ${n.price.amount} ${n.price.unit}`, "ecash"));
+    }
     n.a11y.forEach(v => badges.append(badge(tA11y(v))));
     n.cats.filter(c => c !== state.city.communityTag)
       .forEach(c => badges.append(badge(c, "cat")));
@@ -420,35 +548,65 @@ function popupContent(n) {
     }
     box.append(pub);
   }
+  if (n.price) {
+    const row = document.createElement("div");
+    row.className = "popup-buy";
+    const btn = document.createElement("button");
+    btn.className = "primary buy-btn";
+    btn.textContent =
+      `\u{1F39F}\uFE0F ${t("buy_ticket")} — ${n.price.amount} ${n.price.unit}`;
+    const msg = document.createElement("div");
+    msg.className = "wallet-msg";
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      msg.textContent = "…";
+      msg.className = "wallet-msg";
+      try {
+        await state.wallet.buyTicket(n);
+        msg.textContent = t("ticket_bought");
+        msg.className = "wallet-msg ok";
+      } catch (err) {
+        msg.textContent = err.message;
+        msg.className = "wallet-msg err";
+        btn.disabled = false;
+      }
+    });
+    row.append(btn, msg);
+    box.append(row);
+  }
   return box;
 }
 
-function renderMerchantMarkers() {
+function renderPlaceMarkers() {
   const wanted = new Set();
-  if (state.showMerchants) {
-    for (const [key, m] of state.merchants) {
-      if (m.lat == null || m.lng == null) continue;
-      wanted.add(key);
-      if (state.merchantMarkers.has(key)) continue;
-      const el = document.createElement("div");
-      el.className = "marker merchant";
-      el.setAttribute("role", "button");
-      el.setAttribute("aria-label", m.name);
-      const popup = new maplibregl.Popup({ offset: 14 })
-        .setDOMContent(merchantPopupContent(m));
-      const marker = new maplibregl.Marker({ element: el })
-        .setLngLat([m.lng, m.lat])
-        .setPopup(popup)
-        .addTo(state.map);
-      state.merchantMarkers.set(key, marker);
-    }
+  let visibleCount = 0;
+  for (const [key, m] of state.places) {
+    if (m.lat == null || m.lng == null) continue;
+    if (!state.placeTypes.has(m.placeType)) continue;
+    if (state.ecashOnly && !m.acceptsEcash) continue;
+    visibleCount++;
+    wanted.add(key);
+    if (state.placeMarkers.has(key)) continue;
+    const el = document.createElement("div");
+    el.className = "marker place" + (m.acceptsEcash ? " ecash" : "");
+    el.textContent = PLACE_GLYPHS[m.placeType] || PLACE_GLYPHS.poi;
+    el.setAttribute("role", "button");
+    el.setAttribute("aria-label", `${tPlace(m.placeType)}: ${m.name}`);
+    const popup = new maplibregl.Popup({ offset: 16 })
+      .setDOMContent(placePopupContent(m));
+    const marker = new maplibregl.Marker({ element: el })
+      .setLngLat([m.lng, m.lat])
+      .setPopup(popup)
+      .addTo(state.map);
+    state.placeMarkers.set(key, marker);
   }
-  for (const [key, marker] of state.merchantMarkers) {
-    if (!wanted.has(key)) { marker.remove(); state.merchantMarkers.delete(key); }
+  for (const [key, marker] of state.placeMarkers) {
+    if (!wanted.has(key)) { marker.remove(); state.placeMarkers.delete(key); }
   }
+  return visibleCount;
 }
 
-function merchantPopupContent(m) {
+function placePopupContent(m) {
   const box = document.createElement("div");
   const title = document.createElement("div");
   title.className = "popup-title";
@@ -461,7 +619,9 @@ function merchantPopupContent(m) {
   desc.textContent = m.description;
   const badges = document.createElement("div");
   badges.className = "event-badges";
+  badges.append(badge(`${PLACE_GLYPHS[m.placeType]} ${tPlace(m.placeType)}`, "cat"));
   if (m.acceptsEcash) badges.append(badge(t("accepts_ecash"), "ecash"));
+  else badges.append(badge(t("no_ecash"), "muted"));
   m.cats.filter(c => c !== state.city.communityTag)
     .forEach(c => badges.append(badge(c, "cat")));
   box.append(title, meta, desc, badges);

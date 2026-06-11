@@ -130,6 +130,18 @@ def parse_calendar_event(ev: dict[str, Any]) -> dict[str, Any] | None:
     a11y = sorted({v for v in tag_values(tags, "a11y") if v in A11Y_VOCAB})
     cats = sorted({v for v in tag_values(tags, "t")})
 
+    price = None
+    for tg in tags:
+        if len(tg) >= 2 and tg[0] == "price":
+            try:
+                amt = int(tg[1])
+                if amt > 0:
+                    price = {"amount": amt,
+                             "unit": tg[2] if len(tg) > 2 else "sat"}
+            except ValueError:
+                pass
+            break
+
     return {
         "id": ev["id"],
         "pubkey": ev["pubkey"],
@@ -146,4 +158,5 @@ def parse_calendar_event(ev: dict[str, Any]) -> dict[str, Any] | None:
         "a11y": a11y,
         "tags": cats,
         "image": first_tag(tags, "image"),
+        "price": price,
     }

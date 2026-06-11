@@ -14,10 +14,15 @@
     "wss://relay.nostr.band"
   ],
   "mints": [
+    "http://localhost:3338",
     "https://testnut.cashu.space"
   ],
-  "trustedPublishers": [],
-  "trustedMerchants": [],
+  "trustedPublishers": [
+    "422a4decbd69ac1fe78ff5f493c52d6954487f76ca83b45abf22a75425078455",
+    "4bba45040ece80a955d13d3f6b5fc5b9e4cc859d2d65d4a0b5b34852e5044c16",
+    "cf737ce893b6a3da5354c1a2da4b56dd012fa04480beda366d5cf693b597058c",
+    "ea42bae8b1483a81a9422ca517156a66ab8c13ac5e539cda9f1b54f6e69686d9"
+  ],
   "mapCenter": {
     "lat": 41.1257,
     "lng": 16.8676
@@ -35,5 +40,23 @@
       "en": "città nostr — Bari"
     },
     "accent": "#0E5A8A"
-  }
+  },
+  "trustedPlaces": [
+    "023f1d23a3c6d565d0cce7651cea06a2cc5e393d33ef08aceb32485b711d41a1",
+    "0ee2c948fcde2917d6286bd87c3de63035bae1a3aae08c66a45d3f786d395fce",
+    "11d2b1f2006644b8b7d6cd1f22ec913754284573d9599cda0b31ede445e29ed2",
+    "15de73a19d5ceb485eeaa73dcde4bf78deef224b27f94444b104c5b470cf09b3",
+    "244a5e302613ba25741976598546d7bca617fb6d6f47c2921525293c4676a259",
+    "24546bf883fc4924d8d6bf1e97287cdf8d883a14cb72807b886cdf76f13e71a0",
+    "35017f71339d5ffbcb92165420f9d7140575730fa9fd50cc3a18824fe5de7762",
+    "3a7aa773f84f585163bb71935123e47b1c242c70d1af3348f3a8282f3e19d1ba",
+    "52d6989eff8273bb8d85b7ba9f1d3a6151e2bb3c2e7f2045440643e85193ac28",
+    "a988451b37f04db5659ae8fc7328623bceb160a891d5038a5170a27f59829882",
+    "bfe38657726b09024aaa9f83fcd9cb543c50a04b636dcddc9cff9f6eb39cbe72",
+    "c593535b68dc8996b8ca799d6e0514399cf6b63634a0a040c99a0c042b86e4b2",
+    "e459e8e8ab10eee82739f374c0d7bc05e086a1b7df7793460e3580688451248b",
+    "e747f4b813421d25e6a6fdde6fa2202e9d06bbfefc21af970325662051617eb2",
+    "e9157d9d7ec0ee589c1d0cded4c4892348eee703955449a685e63a8aa9fceb58",
+    "eb17791c18220abbcffc558086c2dd3fcecc2754ea7b156eacf9c5ce84ed21b9"
+  ]
 }

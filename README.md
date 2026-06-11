@@ -1,4 +1,4 @@
-# città nostr — v0.3 (Phase 1 complete + Phase 2 foundations)
+# città nostr — v0.6 (Phase 1 complete + Phase 2 foundations)
 
 A city-configurable client platform for **cultural events with first-class
 accessibility data**, built on Nostr. Bari is the reference city; any city is
@@ -35,9 +35,11 @@ python -m tools.seed_events --city bari --dry-run            # inspect first
 python -m tools.seed_events --city bari --update-allowlist   # publish + trust
 ```
 
-`--update-allowlist` writes the generated org/merchant pubkeys into
-`trustedPublishers` / `trustedMerchants` in the city profile, so the client
-shows them with a ✓. Keys persist in `data/demo_keys.json`; d-tags are
+`--update-allowlist` writes the generated org/place pubkeys into
+`trustedPublishers` / `trustedPlaces` in the city profile, so the client
+shows them with a ✓. The demo now includes 16 typed places (shops, food,
+venue box office, transport, worship, POI, info point) — 8 accepting ecash,
+8 not — each a toggleable map layer. Keys persist in `data/demo_keys.json`; d-tags are
 deterministic, so re-running the seeder *replaces* the published data instead
 of duplicating it. All demo content lives in `config/cities/bari.demo.json` —
 including every venue coordinate, so location fixes happen in that one file.
@@ -91,24 +93,63 @@ Every event is verified twice over before display:
 `verify.js` needs a secure context for WebCrypto — localhost or https,
 which any real deployment has anyway.
 
-## Wallet (Phase 2, step 1)
+## Troubleshooting: stale relay data
 
-The Wallet button opens the Cashu wallet panel: it shows the city's mints
-with live status (NUT-06 `/v1/info`), decodes pasted Cashu V3 tokens
-(`cashuA…`), and keeps received tokens in localStorage. **Honest status:**
-received tokens are *not yet redeemed* — claiming a token requires a
-swap at the mint (BDHKE blinding), which is the next implementation step;
-until then the balance is labeled as unredeemed and must not be trusted for
-real value. `static/js/wallet.js` defines the protocol-agnostic
-`WalletProvider` interface the UI talks to. Bari's profile ships with
-`https://testnut.cashu.space` (a public TEST mint — fake money) for
-development.
+Relays never forget. If you published with an older seeder version you will
+see the *old* events (different keys, different d-tags) alongside or instead
+of the new data — symptoms: outdated titles, "Luoghi 0", no publisher names.
+Fix: re-run `python -m tools.seed_events --city bari --update-allowlist`.
+Populating the allow-lists automatically hides everything signed by the old
+throwaway keys, and the new deterministic d-tags keep future re-runs
+idempotent. Also hard-reload the browser (the HTML now carries `?v=`
+cache-busters on all assets, so this is only needed once).
+
+## Wallet & tickets (Phase 2/3)
+
+The wallet now speaks real Cashu (BDHKE over the EC primitives from
+`verify.js`, NUT-00/01/02/03): **receive** swaps a pasted `cashuA` token at
+its mint, so the proofs become yours and the sender's copy dies; **send**
+selects proofs, swaps for exact denominations plus change, and emits a fresh
+token; balances are per-mint and only count *claimed* proofs. Tokens pasted
+with v0.4 appear under "pending" with a one-click redeem.
+
+**Tickets.** Events may carry `["price", "<amount>", "sat"]`. The client
+shows the price in the list and a "Buy ticket" button in the event popup:
+buying calls `wallet.send(price)` and stores the resulting token as a ticket
+("My tickets" in the wallet). At the door, the organization redeems the
+presented token:
+
+```bash
+python -m tools.cashu_cli redeem --token cashuA...
+```
+
+A successful redeem means the payment is now the organizer's and the token
+cannot be presented twice (the mint atomically marks it spent).
+
+**Local development mint.** Everything runs offline against your own mint:
+
+```bash
+uvicorn tools.dev_mint:app --port 3338           # terminal 1
+python -m tools.cashu_cli mint --amount 1000     # prints a cashuA token
+# paste it into the app wallet -> redeemed -> buy tickets
+```
+
+The dev mint implements NUT-01/02/03/04/06 with auto-paid quotes and
+in-memory double-spend tracking — fake money, restart forgets state. Bari's
+profile lists `http://localhost:3338` first, then testnut.cashu.space.
+
+**Security caveats (documented TODOs).** Tickets are *bearer* tokens: anyone
+who copies one can redeem it — NUT-11 P2PK locking fixes this and is the next
+hardening step. The wallet does not yet verify DLEQ proofs (NUT-12), so it
+trusts the mint not to fingerprint outputs. No melt/Lightning (NUT-05), no
+cashuB/V4 decoding. localStorage holding real value would need encryption +
+backup before any non-test deployment.
 
 ## Known limitations (v0.3)
 
-- Wallet cannot yet swap (claim), mint, send, or melt (pay) — next step.
-- Cashu V4 (`cashuB`, CBOR) tokens not decoded yet.
+- Tickets are bearer instruments until NUT-11 P2PK locking lands.
+- No DLEQ verification (NUT-12), no melt/Lightning, no cashuB/V4 decoding.
 - No marker clustering (fine up to a few hundred nodes).
-- Merchant kind 33888 is a provisional convention (documented).
-- The indexer stores events only; merchants/profiles indexing comes with
+- Place kind 33888 is a provisional convention (documented).
+- The indexer stores events only; places/profiles indexing comes with
   server-side search.

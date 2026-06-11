@@ -5,7 +5,7 @@ merchant (persisted in data/demo_keys.json), then signs and publishes:
 
   - kind 0      profiles (name/about + cittanostr metadata) for every entity
   - kind 31923  NIP-52 events, signed by the owning organization's key
-  - kind 33888  città nostr merchant nodes (see docs/EVENT_SCHEMA.md)
+  - kind 33888  città nostr place nodes (see docs/EVENT_SCHEMA.md)
 
 Usage:
     python -m tools.seed_events --city bari --dry-run            # print only
@@ -34,7 +34,7 @@ from server.nostr_util import event_id, geohash_encode
 ROOT = Path(__file__).resolve().parent.parent
 KEYS_FILE = ROOT / "data" / "demo_keys.json"
 
-MERCHANT_KIND = 33888
+PLACE_KIND = 33888
 NOW = int(time.time())
 
 
@@ -110,24 +110,30 @@ def build_org_events(sk: PrivateKey, city: dict, org: dict) -> list[dict]:
             ["t", city["communityTag"]],
             *[["t", c] for c in ev.get("cats", [])],
             *[["a11y", a] for a in ev.get("a11y", [])],
+            *([["price", str(ev["priceSat"]), "sat"]]
+              if ev.get("priceSat") else []),
             ["l", "it", "ISO-639-1"],
         ]
         out.append(sign_event(sk, 31923, tags, ev["desc"]))
     return out
 
 
-def build_merchant(sk: PrivateKey, city: dict, m: dict) -> dict:
-    mints = m.get("mints") or city.get("mints") or []
+def build_place(sk: PrivateKey, city: dict, m: dict) -> dict:
+    if m.get("acceptsEcash", True):
+        mints = m.get("mints") or city.get("mints") or []
+    else:
+        mints = []   # no ecash tags -> the client shows "doesn't accept"
     tags = [
         ["d", stable_d(city["id"], m["id"])],
         ["title", m["name"]],
+        ["type", m.get("type", "merchant")],
         ["location", m["address"]],
         ["g", geohash_encode(m["lat"], m["lng"], 9)],
         ["t", city["communityTag"]],
         *[["t", c] for c in m.get("cats", [])],
         *[["ecash", url] for url in mints],
     ]
-    return sign_event(sk, MERCHANT_KIND, tags, m.get("about", ""))
+    return sign_event(sk, PLACE_KIND, tags, m.get("about", ""))
 
 
 # ------------------------------------------------------------------ publish
@@ -149,15 +155,17 @@ async def publish(relay: str, events: list[dict]) -> None:
 
 
 def update_allowlist(city_path: Path, city: dict,
-                     org_pubkeys: list[str], merchant_pubkeys: list[str]) -> None:
+                     org_pubkeys: list[str], place_pubkeys: list[str]) -> None:
     city["trustedPublishers"] = sorted(set(city.get("trustedPublishers") or [])
                                        | set(org_pubkeys))
-    city["trustedMerchants"] = sorted(set(city.get("trustedMerchants") or [])
-                                      | set(merchant_pubkeys))
+    # migrate the pre-v0.5 key name, then drop it
+    legacy = set(city.pop("trustedMerchants", []) or [])
+    city["trustedPlaces"] = sorted(set(city.get("trustedPlaces") or [])
+                                   | legacy | set(place_pubkeys))
     city_path.write_text(json.dumps(city, indent=2, ensure_ascii=False) + "\n")
     print(f"allow-lists updated in {city_path.name}: "
           f"{len(city['trustedPublishers'])} publishers, "
-          f"{len(city['trustedMerchants'])} merchants")
+          f"{len(city['trustedPlaces'])} places")
 
 
 async def main() -> None:
@@ -175,7 +183,7 @@ async def main() -> None:
     keys = load_keys()
 
     batch: list[dict] = []
-    org_pubkeys, merchant_pubkeys = [], []
+    org_pubkeys, place_pubkeys = [], []
 
     for org in demo["organizations"]:
         sk = key_for(keys, org["id"])
@@ -183,20 +191,20 @@ async def main() -> None:
         batch.append(build_profile(sk, city, org, "organization"))
         batch.extend(build_org_events(sk, city, org))
 
-    for m in demo["merchants"]:
+    for m in demo["places"]:
         sk = key_for(keys, m["id"])
-        merchant_pubkeys.append(xonly_pubkey(sk))
-        batch.append(build_profile(sk, city, m, "merchant"))
-        batch.append(build_merchant(sk, city, m))
+        place_pubkeys.append(xonly_pubkey(sk))
+        batch.append(build_profile(sk, city, m, m.get("type", "merchant")))
+        batch.append(build_place(sk, city, m))
 
     print("entities:")
     for kind_name, ents, pks in (("org", demo["organizations"], org_pubkeys),
-                                 ("merchant", demo["merchants"], merchant_pubkeys)):
+                                 ("place", demo["places"], place_pubkeys)):
         for ent, pk in zip(ents, pks):
-            print(f"  [{kind_name:<8}] {ent['id']:<24} {pk}")
+            print(f"  [{kind_name:<5}] {ent['id']:<26} {pk}")
 
     if args.update_allowlist:
-        update_allowlist(city_path, city, org_pubkeys, merchant_pubkeys)
+        update_allowlist(city_path, city, org_pubkeys, place_pubkeys)
     else:
         trusted = set(city.get("trustedPublishers") or [])
         if trusted and not set(org_pubkeys) <= trusted:
